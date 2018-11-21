@@ -55,6 +55,11 @@ namespace tobbi_pc
         /// </summary>
         public event EventHandler<TaskProcessingStateEventArgs<T>> TaskStarting;
 
+        /// <summary>
+        /// Inform subscribers that queue of tasks is empty again
+        /// </summary>
+        public event EventHandler<EventArgs> AllTasksProcessed;
+
         #endregion
 
         #region Ctors
@@ -89,13 +94,22 @@ namespace tobbi_pc
             //create task data to proces
             TaskData<T> taskData = new TaskData<T>(taskMethod, incomeData, taskName);
 
+            AddTask(taskData);
+
+            return taskData.Id;
+        }
+
+        /// <summary>
+        /// Add TaskData instance 
+        /// </summary>
+        /// <param name="taskData">Item to add </param>
+        public void AddTask(TaskData<T> taskData)
+        {
             //add it to Q
             tasksQ.Enqueue(taskData);
 
             //scroll the loop
             loopTriger.Set();
-            
-            return taskData.Id;
         }
 
         /// <summary>
@@ -206,9 +220,7 @@ namespace tobbi_pc
                     if(tasksQ.TryDequeue(out currentTD))
                     {
                         try
-                        {
-                            currentTD.IdWorkTask = currWorkTaskThread.ManagedThreadId;
-
+                        {                            
                             onTaskStarting(currentTD);
                            
                             currentTD.TaskMethod(currentTD.IncomeData);                                                     
@@ -224,6 +236,9 @@ namespace tobbi_pc
                 }
                 else
                 {
+                    //notifi subscribers
+                    onAllTasksProcessed();
+
                     //waiting for new tasks will be added to the Q
                     loopTriger.WaitOne();
                 }                
@@ -238,6 +253,11 @@ namespace tobbi_pc
         void onTaskStarting(TaskData<T> taskData)
         {
             TaskStarting?.Invoke(this, new TaskProcessingStateEventArgs<T>(taskData));
+        }
+
+        void onAllTasksProcessed()
+        {
+            AllTasksProcessed?.Invoke(this, new EventArgs());
         }
 
         void createQ()

@@ -11,6 +11,9 @@ namespace tobbi_testApp
 {
     class Program
     {
+        static bool resultListWasChecked = false;
+        static object list_locker = new object();
+
         //it will be use to process tasks 
         static TaskProcessor<int> taskProcc;
 
@@ -18,23 +21,28 @@ namespace tobbi_testApp
         static TaskProcessor<string> consoleLogger;
 
         //list with data to proces - source list
-        static List<TaskData<int>> tasksDataList;
+        static List<TaskData<int>> listOfSourceTaskData;
 
         //store results of processing task data - result list
         static List<TaskData<int>> listOfProccessedTaskData;
 
         static void Main(string[] args)
         {
+            //contain processed tasks
             listOfProccessedTaskData = new List<TaskData<int>>();
+
+            //contain source tasks
+            listOfSourceTaskData = new List<TaskData<int>>();
 
             //to set time of work simulation
             Random r = new Random(DateTime.Now.Second);
 
-            //main processor
+            //main processor 
             taskProcc = new TaskProcessor<int>();
 
             taskProcc.TaskComplited += TaskProcc_TaskComplited;
             taskProcc.TaskStarting += TaskProcc_TaskStarting;
+            taskProcc.AllTasksProcessed += TaskProcc_AllTasksProcessed;
 
             //log messages processor
             consoleLogger = new TaskProcessor<string>(500);
@@ -91,17 +99,14 @@ namespace tobbi_testApp
 
             consoleLogger.Start();
 
-            #region Add tasks to processor
+            #region add client tasks from different threads with different dalays      
 
-            tasksDataList = new List<TaskData<int>>();
+            Parallel.For(0, 50,
+                it =>
+                {
+                    int r_val = r.Next(1, 9);
 
-            for (int i = 0; i < 100; i++)
-            {
-                int k = i;
-                int r_val = r.Next(1, 9);
-
-                tasksDataList.Add(
-                    new TaskData<int>(
+                    TaskData<int> currTask = new TaskData<int>(
                          //task delegate
                          intV =>
                          {
@@ -113,52 +118,117 @@ namespace tobbi_testApp
                              //right way to perform
                              else
                              {
-                                 Thread.Sleep(r_val * 50);
+                                 Thread.Sleep(r_val * 20);
                                  //intV.ToString();
                              }
                          },
                          //incomeData data for task
-                         k,
+                         it,
                          //task name
-                         $"t_{k}"));
-            }
+                         $"t_{it}");
 
+                    //add task to the processor queue
+                    lock (list_locker)
+                    {
+                        listOfSourceTaskData.Add(currTask);
+                        taskProcc.AddTask(currTask);
+                    }
 
+                    Thread.Sleep(r_val * 10);
+                });
 
             //logMsg("all tasks were added.", ConsoleColor.Magenta);
             Console.WriteLine("all tasks were added.");
 
             #endregion
-            
+
 
             #region Test start/stop processor with no empty queue
-            
-            Thread.Sleep(10000);
+
+            Thread.Sleep(2000);
 
             taskProcc.Stop();
 
             logMsg("Processor was stoped.", ConsoleColor.Magenta);
-            
+
             Thread.Sleep(3000);
 
             logMsg("Processor was started again.", ConsoleColor.Magenta);
-            
+
             taskProcc.Start();
 
             #endregion
-            
+
             Console.ReadLine();
         }
 
-        #region Additional methods
+        #region Event handlers
+
+        static void TaskProcc_AllTasksProcessed(object sender, EventArgs e)
+        {
+            if (resultListWasChecked)
+            {
+                return;
+            }
+
+            if (!(listOfProccessedTaskData?.Count > 0
+                && listOfSourceTaskData?.Count > 0))
+            {
+                return;
+            }
+
+            bool somethingIsWrong = false;
+
+            logMsg("\n\nSource and Result lists COMPARATION:\n\n", ConsoleColor.Red);
+
+            if (listOfSourceTaskData?.Count != listOfProccessedTaskData?.Count)
+            {
+                logMsg("\nSource and Result lists have different count of items.", ConsoleColor.Red);
+
+                somethingIsWrong = true;
+            }
+
+            if (!somethingIsWrong)
+            {
+                for (int i = 0; i < listOfSourceTaskData.Count; i++)
+                {
+                    var source_it = listOfSourceTaskData[i];
+                    var processed_it = listOfProccessedTaskData[i];
+
+                    if (source_it.Id != processed_it.Id)
+                    {
+                        logMsg($"Items num_{i} are not same. \n{source_it.Id} - {processed_it.Id}", ConsoleColor.Red);
+
+                        somethingIsWrong = true;
+                        break;
+                    }
+
+                    logMsg($"Source: {source_it.Name} - Result: {processed_it.Name}", ConsoleColor.DarkYellow);
+                }
+            }
+
+            if (!somethingIsWrong)
+            {
+                logMsg("\nSource and result lists have the same count and order of items", ConsoleColor.Yellow);
+            }
+
+            resultListWasChecked = true;
+        }
 
         static void TaskProcc_TaskStarting(object sender, TaskProcessingStateEventArgs<int> e)
-        {            
+        {
+            //add start processing item to result list
+            lock (list_locker)
+            {
+                listOfProccessedTaskData.Add(e.TaskData);
+            }
+
             if (e.TaskData.Ex == null)
 
                 consoleLogger.AddTask(
-                    msg => {
-                        logMsg($" ({e.TaskData.IdWorkTask}) Task: {e.TaskData.Name} was starting ", ConsoleColor.Blue, false);
+                    msg =>
+                    {
+                        logMsg($"Client task: {e.TaskData.Name} was starting ", ConsoleColor.Blue);
                     },
                     null,
                     string.Empty);
@@ -169,16 +239,14 @@ namespace tobbi_testApp
             string msgToShow = string.Empty;
             ConsoleColor consCol = Console.ForegroundColor;
 
-            listOfProccessedTaskData.Add(e.TaskData);
-
             if (e.TaskData.Ex == null)
             {
-                msgToShow = $" ({e.TaskData.IdWorkTask}) Task {e.TaskData.Name} complited succsesfull";
+                msgToShow = $"Client task {e.TaskData.Name} complited succsesfull";
                 consCol = ConsoleColor.Green;
             }
             else
             {
-                msgToShow = $" ({e.TaskData.IdWorkTask}) Current task ({e.TaskData.Name}) processing error. {e.TaskData.Ex.Message}";
+                msgToShow = $"!!! Current task ({e.TaskData.Name}) processing error. {e.TaskData.Ex.Message}";
                 consCol = ConsoleColor.Red;
             }
 
@@ -188,8 +256,12 @@ namespace tobbi_testApp
                     logMsg(msgToShow, consCol);
                 },
                 null,
-                string.Empty);            
+                string.Empty);
         }
+
+        #endregion
+        
+        #region Additional methods
 
         static void logMsg(string msg, ConsoleColor color, bool changeLineAfterText = true)
         {

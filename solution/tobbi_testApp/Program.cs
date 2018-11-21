@@ -15,10 +15,10 @@ namespace tobbi_testApp
         static object list_locker = new object();
 
         //it will be use to process tasks 
-        static TaskProcessor<int> taskProcc;
+        static TasksProcessor<int> taskProcc;
 
         //it will be use to display message from first processor events
-        static TaskProcessor<string> consoleLogger;
+        static TasksProcessor<string> consoleLogger;
 
         //list with data to proces - source list
         static List<TaskData<int>> listOfSourceTaskData;
@@ -38,14 +38,14 @@ namespace tobbi_testApp
             Random r = new Random(DateTime.Now.Second);
 
             //main processor 
-            taskProcc = new TaskProcessor<int>();
+            taskProcc = new TasksProcessor<int>();
 
             taskProcc.TaskComplited += TaskProcc_TaskComplited;
             taskProcc.TaskStarting += TaskProcc_TaskStarting;
             taskProcc.AllTasksProcessed += TaskProcc_AllTasksProcessed;
 
             //log messages processor
-            consoleLogger = new TaskProcessor<string>(500);
+            consoleLogger = new TasksProcessor<string>(500);
 
             #region test processor start/stop methods in chaotic way
 
@@ -161,7 +161,7 @@ namespace tobbi_testApp
 
             Console.ReadLine();
         }
-
+        
         #region Event handlers
 
         static void TaskProcc_AllTasksProcessed(object sender, EventArgs e)

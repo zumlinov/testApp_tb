@@ -13,7 +13,7 @@ namespace tobbi_pc
     /// Class to parallel add , store  and execute task one by one
     /// </summary>
     /// <typeparam name="T">Type of param will be passed to task delegat</typeparam>
-    public class TaskProcessor<T>
+    public class TasksProcessor<T>
     {
         #region privet fields
         
@@ -64,7 +64,7 @@ namespace tobbi_pc
 
         #region Ctors
 
-        public TaskProcessor(int waitForCurrentTaskTimeOut = 300)
+        public TasksProcessor(int waitForCurrentTaskTimeOut = 300)
         {           
             WaitForCurrentTaskFinishingTimeOut = waitForCurrentTaskTimeOut;
 

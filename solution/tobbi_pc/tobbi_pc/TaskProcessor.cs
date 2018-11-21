@@ -9,85 +9,111 @@ using tobbi_pc.Classes;
 
 namespace tobbi_pc
 {
-    public class TaskProcessor<T,K>
+    /// <summary>
+    /// Class to parallel add , store  and execute task one by one
+    /// </summary>
+    /// <typeparam name="T">Type of param will be passed to task delegat</typeparam>
+    public class TaskProcessor<T>
     {
         #region privet fields
-
-        object console_locker;
-        //bool doWork;
-
+        
+        //this instance will stop work loop if queue will be empty
         AutoResetEvent loopTriger;
 
-        ConcurrentQueue<TaskData<T, K>> tasksQ;
+        //queue to store tasks
+        ConcurrentQueue<TaskData<T>> tasksQ;
 
+        //task to process client tasks
         Task workTask;
 
+        //thread of current task
         Thread currWorkTaskThread;
 
+        //token to cancel working  loop processing
         CancellationTokenSource cancelationTS;
-        
+
         #endregion
 
+        #region Public props
+        
         /// <summary>
         /// 
         /// </summary>
-        public int WaitForCurrentTaskTimeOut { get; }
+        public int WaitForCurrentTaskFinishingTimeOut { get; }
+
+        #endregion
 
         #region Events
 
         /// <summary>
         /// This event is raised when task processing was complited
         /// </summary>
-        public event EventHandler<TaskProcessingStateEventArgs<T,K>> TaskComplited;
+        public event EventHandler<TaskProcessingStateEventArgs<T>> TaskComplited;
 
         /// <summary>
         /// This event is raised when task processing begin
         /// </summary>
-        public event EventHandler<TaskProcessingStateEventArgs<T, K>> TaskStarting;
+        public event EventHandler<TaskProcessingStateEventArgs<T>> TaskStarting;
 
         #endregion
 
         #region Ctors
 
-        public TaskProcessor(int waitForCurrentTaskTimeOut)
-        {
-            console_locker = new object();
+        public TaskProcessor(int waitForCurrentTaskTimeOut = 300)
+        {           
+            WaitForCurrentTaskFinishingTimeOut = waitForCurrentTaskTimeOut;
 
-            WaitForCurrentTaskTimeOut = waitForCurrentTaskTimeOut;
-
-            if(WaitForCurrentTaskTimeOut<0)
+            if(WaitForCurrentTaskFinishingTimeOut<0)
             {
-                WaitForCurrentTaskTimeOut = 0;
+                WaitForCurrentTaskFinishingTimeOut = 0;
             }
 
             loopTriger = new AutoResetEvent(false);            
             cancelationTS = new CancellationTokenSource();
-            tasksQ = new ConcurrentQueue<TaskData<T, K>>();
+            createQ();
         }
 
         #endregion
 
         #region Public methods
 
-        public Guid AddTAsk(Func<T,K> taskMethod, T incomeData, string taskName)
+        /// <summary>
+        /// This method add data to queue
+        /// </summary>
+        /// <param name="taskMethod">method will be called </param>
+        /// <param name="incomeData">data to process by <taskMethod></param>
+        /// <param name="taskName">Just name for task data. Can be usefull for client</param>
+        /// <returns>Id of created instance of TaskData  </returns>
+        public Guid AddTask(Action<T> taskMethod, T incomeData, string taskName)
         {
-            TaskData<T, K> taskData = new TaskData<T, K>(taskMethod, incomeData, taskName);
+            //create task data to proces
+            TaskData<T> taskData = new TaskData<T>(taskMethod, incomeData, taskName);
 
+            //add it to Q
             tasksQ.Enqueue(taskData);
 
+            //scroll the loop
             loopTriger.Set();
-
+            
             return taskData.Id;
         }
 
-
+        /// <summary>
+        /// Remove all TaskData from queue
+        /// </summary>
+        public void StopAndClear()
+        {
+            Stop();
+            createQ();
+        }
+        
 
         /// <summary>
         /// Start tasks propcessing 
         /// </summary>
         public void Start()
         {
-            //task already started
+            //task already started - stop it
             if(workTask!=null)
             {
                 if(workTask.Status == TaskStatus.Running)
@@ -101,7 +127,8 @@ namespace tobbi_pc
             }
 
             cancelationTS = new CancellationTokenSource();
-            workTask = Task.Run(action: workMethod);                 
+            
+            workTask = Task.Factory.StartNew(action: workMethod);                 
         }
 
         /// <summary>
@@ -109,33 +136,39 @@ namespace tobbi_pc
         /// </summary>
         public void Stop()
         {
-            if(workTask!=null && workTask.Status == TaskStatus.Running)
+            if (workTask != null)
             {
-                //cancelation request
-                cancelationTS.Cancel();
+                if (workTask.Status == TaskStatus.Running 
+                        || workTask.Status == TaskStatus.WaitingToRun
+                        || workTask.Status == TaskStatus.Created
+                        || workTask.Status == TaskStatus.WaitingForActivation)
+                {
+                    //request cancelation
+                    cancelationTS.Cancel();
+                    
+                    //scroll the working loop
+                    loopTriger.Set();
+                    
+                    //wait for task finishing
+                    workTask.Wait(WaitForCurrentTaskFinishingTimeOut);
+                }
 
-                loopTriger.Set();
+                #region Force way to abort a task - last chance
 
-                //wait for task finishing
-                workTask.Wait(WaitForCurrentTaskTimeOut);
-
-                #region Forece way to abort task
-
-                if(workTask.Status==TaskStatus.Running)
+                if (workTask.Status == TaskStatus.Running)
                 {
                     try
                     {
                         currWorkTaskThread?.Abort();
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        
                     }
                 }
 
                 #endregion
             }
-
+            
             workTask = null;
             currWorkTaskThread = null;
         }
@@ -144,11 +177,15 @@ namespace tobbi_pc
 
         #region private methods
 
+        /// <summary>
+        /// Process TaskData from queue
+        /// </summary>
         void workMethod()
-        {
+        {            
+            //may be used to emergency task abort
             currWorkTaskThread = Thread.CurrentThread;
 
-            TaskData<T, K> currentTD = null;
+            TaskData<T> currentTD = null;
 
             while (true)
             {
@@ -162,48 +199,50 @@ namespace tobbi_pc
 
                 #endregion
 
+                //check queue length
                 if(!tasksQ.IsEmpty)
                 {
+                    //try to get next task
                     if(tasksQ.TryDequeue(out currentTD))
                     {
                         try
                         {
+                            currentTD.IdWorkTask = currWorkTaskThread.ManagedThreadId;
+
                             onTaskStarting(currentTD);
-                           // logMsg($"Task: {currentTD.Name} was started.", ConsoleColor.Blue, false);
-                            currentTD.Result = currentTD.TaskMethod(currentTD.IncomeData);
-                            //logMsg($"Task: {currentTD.Name} succsessfully processed.", ConsoleColor.Green);                            
+                           
+                            currentTD.TaskMethod(currentTD.IncomeData);                                                     
                         }
                         catch (Exception ex)
                         {
-                            //logMsg($"Current task ({currentTD.Name}) processing error. {ex.Message}", ConsoleColor.Red);
                             currentTD.Ex = ex;
                         }
 
                         //notify subscribers
                         onTaskComplited(currentTD);
-                    }
-                    else
-                    {
-                        //logMsg($"Task Dequeuing failure.", ConsoleColor.Yellow);
-                    }
+                    }                   
                 }
                 else
                 {
-                    //Console.WriteLine("Work loop paused");
+                    //waiting for new tasks will be added to the Q
                     loopTriger.WaitOne();
                 }                
             }
         }
-
-        
-        void onTaskComplited(TaskData<T,K> taskData)
+                
+        void onTaskComplited(TaskData<T> taskData)
         {
-            TaskComplited?.Invoke(this, new TaskProcessingStateEventArgs<T, K>(taskData));
+            TaskComplited?.Invoke(this, new TaskProcessingStateEventArgs<T>(taskData));
         }
 
-        void onTaskStarting(TaskData<T,K> taskData)
+        void onTaskStarting(TaskData<T> taskData)
         {
-            TaskStarting?.Invoke(this, new TaskProcessingStateEventArgs<T, K>(taskData));
+            TaskStarting?.Invoke(this, new TaskProcessingStateEventArgs<T>(taskData));
+        }
+
+        void createQ()
+        {
+            tasksQ = new ConcurrentQueue<TaskData<T>>();
         }
 
         #endregion

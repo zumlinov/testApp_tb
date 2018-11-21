@@ -11,25 +11,19 @@ namespace tobbi_pc.Classes
     /// </summary>
     /// <typeparam name="T">Type of data produced by client task</typeparam>
     /// <typeparam name="K">Income data for client task</typeparam>
-    public class TaskData<T,K>
+    public class TaskData<T>
     {
         #region Public properties
 
         /// <summary>
         ///TaskMethod user want to be done
         /// </summary>
-        public Func<T, K> TaskMethod { get; protected set; }
+        public Action<T> TaskMethod { get; protected set; }
 
         /// <summary>
         /// Income data need to be processed by Task
         /// </summary>
-        public T IncomeData { get; protected set; }
-
-        /// <summary>
-        /// Result produced by client task
-        /// </summary>
-        public K Result { get; set; }
-
+        public T IncomeData { get; protected set; }        
 
         /// <summary>
         /// Exception if it happaned
@@ -45,12 +39,15 @@ namespace tobbi_pc.Classes
         /// Name of task ( mostly for people)
         /// </summary>
         public string Name { get; set; }
-        
+
+        //temp
+        public int IdWorkTask { get; set; }
+
         #endregion
 
         #region Ctors
 
-        public TaskData(Func<T,K> taskMethod, T incomeData, string name)
+        public TaskData(Action<T> taskMethod, T incomeData, string name)
         {
             if(taskMethod==null)
             {

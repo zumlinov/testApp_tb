@@ -6,22 +6,21 @@ namespace tobbi_pc
     /// <summary>
     /// Contain data for TaskComplite event
     /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <typeparam name="K"></typeparam>
-    public class TaskProcessingStateEventArgs<T,K> : EventArgs
+    /// <typeparam name="T"></typeparam>   
+    public class TaskProcessingStateEventArgs<T> : EventArgs
     {
         #region Public properties
 
         /// <summary>
         /// Contain all info about task
         /// </summary>
-        public TaskData<T,K> TaskData { get; }
+        public TaskData<T> TaskData { get; }
 
         #endregion
 
         #region Ctors
 
-        public TaskProcessingStateEventArgs(TaskData<T, K> taskData)
+        public TaskProcessingStateEventArgs(TaskData<T> taskData)
         {
             if(taskData==null)
             {

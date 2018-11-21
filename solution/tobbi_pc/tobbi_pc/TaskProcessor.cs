@@ -33,6 +33,20 @@ namespace tobbi_pc
         /// </summary>
         public int WaitForCurrentTaskTimeOut { get; }
 
+        #region Events
+
+        /// <summary>
+        /// This event is raised when task processing was complited
+        /// </summary>
+        public event EventHandler<TaskProcessingStateEventArgs<T,K>> TaskComplited;
+
+        /// <summary>
+        /// This event is raised when task processing begin
+        /// </summary>
+        public event EventHandler<TaskProcessingStateEventArgs<T, K>> TaskStarting;
+
+        #endregion
+
         #region Ctors
 
         public TaskProcessor(int waitForCurrentTaskTimeOut)
@@ -65,6 +79,8 @@ namespace tobbi_pc
 
             return taskData.Id;
         }
+
+
 
         /// <summary>
         /// Start tasks propcessing 
@@ -140,7 +156,7 @@ namespace tobbi_pc
 
                 if (cancelationTS.Token.IsCancellationRequested)
                 {
-                    logMsg("Processing was canceled", ConsoleColor.Magenta);
+                    //logMsg("Processing was canceled", ConsoleColor.Magenta);
                     break;
                 }
 
@@ -152,19 +168,23 @@ namespace tobbi_pc
                     {
                         try
                         {
-                            logMsg($"Task: {currentTD.Name} was started.", ConsoleColor.Blue, false);
+                            onTaskStarting(currentTD);
+                           // logMsg($"Task: {currentTD.Name} was started.", ConsoleColor.Blue, false);
                             currentTD.Result = currentTD.TaskMethod(currentTD.IncomeData);
-                            logMsg($"Task: {currentTD.Name} succsessfully processed.", ConsoleColor.Green);
+                            //logMsg($"Task: {currentTD.Name} succsessfully processed.", ConsoleColor.Green);                            
                         }
                         catch (Exception ex)
                         {
-                            logMsg($"Current task ({currentTD.Name}) processing error. {ex.Message}", ConsoleColor.Red);
+                            //logMsg($"Current task ({currentTD.Name}) processing error. {ex.Message}", ConsoleColor.Red);
                             currentTD.Ex = ex;
                         }
+
+                        //notify subscribers
+                        onTaskComplited(currentTD);
                     }
                     else
                     {
-                        logMsg($"Task Dequeuing failure.", ConsoleColor.Yellow);
+                        //logMsg($"Task Dequeuing failure.", ConsoleColor.Yellow);
                     }
                 }
                 else
@@ -175,22 +195,15 @@ namespace tobbi_pc
             }
         }
 
-        void logMsg(string msg, ConsoleColor color, bool changeLineAfterText = true)
+        
+        void onTaskComplited(TaskData<T,K> taskData)
         {
-            lock (console_locker)
-            {
-                Console.ForegroundColor = color;
+            TaskComplited?.Invoke(this, new TaskProcessingStateEventArgs<T, K>(taskData));
+        }
 
-                if (changeLineAfterText)
-                {
-                    Console.WriteLine($"{DateTime.Now.ToLongTimeString()} : {msg}");
-                }
-                else
-                {
-                    Console.Write($"{DateTime.Now.ToLongTimeString()} : {msg} ");
-                }
-                Console.ResetColor();
-            }
+        void onTaskStarting(TaskData<T,K> taskData)
+        {
+            TaskStarting?.Invoke(this, new TaskProcessingStateEventArgs<T, K>(taskData));
         }
 
         #endregion

@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using tobbi_pc.Classes;
 
 namespace tobbi_pc
@@ -12,7 +8,7 @@ namespace tobbi_pc
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <typeparam name="K"></typeparam>
-    public class TaskComplitedEventArgs<T,K> : EventArgs
+    public class TaskProcessingStateEventArgs<T,K> : EventArgs
     {
         #region Public properties
 
@@ -25,14 +21,14 @@ namespace tobbi_pc
 
         #region Ctors
 
-        public TaskComplitedEventArgs(TaskData<T, K> taskData)
+        public TaskProcessingStateEventArgs(TaskData<T, K> taskData)
         {
             if(taskData==null)
             {
                 throw new ArgumentNullException("Task data can't be null.");
             }
 
-            TaskData = TaskData;
+            TaskData = taskData;
         }
 
         #endregion

@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using tobbi_pc;
@@ -15,30 +13,30 @@ namespace tobbi_testApp
         static object list_locker = new object();
 
         //it will be use to process tasks 
-        static TasksProcessor<int> taskProcc;
+        static TasksProcessor<string> taskProcc;
 
         //it will be use to display message from first processor events
         static TasksProcessor<string> consoleLogger;
 
         //list with data to proces - source list
-        static List<TaskData<int>> listOfSourceTaskData;
+        static List<TaskData<string>> listOfSourceTaskData;
 
         //store results of processing task data - result list
-        static List<TaskData<int>> listOfProccessedTaskData;
+        static List<TaskData<string>> listOfProccessedTaskData;
 
         static void Main(string[] args)
         {
             //contain processed tasks
-            listOfProccessedTaskData = new List<TaskData<int>>();
+            listOfProccessedTaskData = new List<TaskData<string>>();
 
             //contain source tasks
-            listOfSourceTaskData = new List<TaskData<int>>();
+            listOfSourceTaskData = new List<TaskData<string>>();
 
             //to set time of work simulation
             Random r = new Random(DateTime.Now.Second);
 
             //main processor 
-            taskProcc = new TasksProcessor<int>();
+            taskProcc = new TasksProcessor<string>();
 
             taskProcc.TaskComplited += TaskProcc_TaskComplited;
             taskProcc.TaskStarting += TaskProcc_TaskStarting;
@@ -106,9 +104,9 @@ namespace tobbi_testApp
                 {
                     int r_val = r.Next(1, 9);
 
-                    TaskData<int> currTask = new TaskData<int>(
-                         //task delegate
-                         intV =>
+                    TaskData<string> currTask = new TaskData<string>(
+                         //async task delegate
+                         async incData =>
                          {
                              //simulate exception inside task
                              if (r_val == 6)
@@ -118,12 +116,17 @@ namespace tobbi_testApp
                              //right way to perform
                              else
                              {
-                                 Thread.Sleep(r_val * 20);
-                                 //intV.ToString();
+                                 await Task.Run(() =>
+                                 {
+                                     //do some work ...
+                                     
+
+                                     Thread.Sleep(r_val * 20);
+                                 });                                 
                              }
                          },
                          //incomeData data for task
-                         it,
+                         it.ToString(),
                          //task name
                          $"t_{it}");
 
@@ -215,7 +218,7 @@ namespace tobbi_testApp
             resultListWasChecked = true;
         }
 
-        static void TaskProcc_TaskStarting(object sender, TaskProcessingStateEventArgs<int> e)
+        static void TaskProcc_TaskStarting(object sender, TaskProcessingStateEventArgs<string> e)
         {
             //add start processing item to result list
             lock (list_locker)
@@ -226,7 +229,7 @@ namespace tobbi_testApp
             if (e.TaskData.Ex == null)
 
                 consoleLogger.AddTask(
-                    msg =>
+                    async msg =>
                     {
                         logMsg($"Client task: {e.TaskData.Name} was starting ", ConsoleColor.Blue);
                     },
@@ -234,7 +237,7 @@ namespace tobbi_testApp
                     string.Empty);
         }
 
-        static void TaskProcc_TaskComplited(object sender, TaskProcessingStateEventArgs<int> e)
+        static void TaskProcc_TaskComplited(object sender, TaskProcessingStateEventArgs<string> e)
         {
             string msgToShow = string.Empty;
             ConsoleColor consCol = Console.ForegroundColor;
@@ -251,7 +254,7 @@ namespace tobbi_testApp
             }
 
             consoleLogger.AddTask(
-                msg =>
+                async msg =>
                 {
                     logMsg(msgToShow, consCol);
                 },

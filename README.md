@@ -6,7 +6,37 @@ There are two projects:
 	tobbi_pc - classes and provider consumer class; ( TasksProcessor<T> )
 	tobbi_testApp - test application to test classes code.
 	
-Test process :
+Client task class TaskData<T> contain next properties:
+            
+        /// <summary>
+        ///Async TaskMethod user want to be done. 
+        /// </summary>
+        public Func<T,Task> TaskMethod { get; protected set; }
+
+        /// <summary>
+        /// Income data need to be processed by TaskMethod
+        /// </summary>
+        public T IncomeData { get; set; }        
+
+        /// <summary>
+        /// Exception if something went wrong
+        /// </summary>
+        public Exception Ex { get; set; }
+
+        /// <summary>
+        /// Id for task idintification 
+        /// </summary>
+        public Guid Id { get; protected set; }
+
+        /// <summary>
+        /// Name of task ( mostly for people)
+        /// </summary>
+        public string Name { get; set; }	
+		
+Fill all this properties and pass it to a taskProcessor.		
+	
+	
+Testing process :
 
 1. Create tested consumer class. (TasksProcessor<T>)
 2. Test Start/Stop methods of this class in unusual way 	

@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace tobbi_pc.Classes
@@ -9,23 +6,23 @@ namespace tobbi_pc.Classes
     /// <summary>
     /// Contain data is needed to start client task  
     /// </summary>
-    /// <typeparam name="T">Type of data produced by client task</typeparam>   
+    /// <typeparam name="T">Type of income data will be processed by client task</typeparam>   
     public class TaskData<T>
     {
         #region Public properties
 
         /// <summary>
-        ///TaskMethod user want to be done
+        ///Async TaskMethod user want to be done. 
         /// </summary>
-        public Action<T> TaskMethod { get; protected set; }
+        public Func<T, Task> TaskMethod { get; protected set; }
 
         /// <summary>
-        /// Income data need to be processed by Task
+        /// Income data need to be processed by TaskMethod
         /// </summary>
-        public T IncomeData { get; set; }        
+        public T IncomeData { get; set; }
 
         /// <summary>
-        /// Exception if it happaned
+        /// Exception if something went wrong
         /// </summary>
         public Exception Ex { get; set; }
 
@@ -38,12 +35,12 @@ namespace tobbi_pc.Classes
         /// Name of task ( mostly for people)
         /// </summary>
         public string Name { get; set; }
-        
+
         #endregion
 
         #region Ctors
 
-        public TaskData(Action<T> taskMethod, T incomeData, string name)
+        public TaskData(Func<T, Task> taskMethod, T incomeData, string name)
         {
             TaskMethod = taskMethod ?? throw new ArgumentNullException("Task can't be null.");
 

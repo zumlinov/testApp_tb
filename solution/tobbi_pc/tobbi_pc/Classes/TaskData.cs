@@ -12,9 +12,9 @@ namespace tobbi_pc.Classes
         #region Public properties
 
         /// <summary>
-        ///Async TaskMethod user want to be done. 
+        ///TaskMethod user want to be done. 
         /// </summary>
-        public Func<T, Task> TaskMethod { get; protected set; }
+        public Action<T> TaskMethod { get; protected set; }
 
         /// <summary>
         /// Income data need to be processed by TaskMethod
@@ -40,7 +40,7 @@ namespace tobbi_pc.Classes
 
         #region Ctors
 
-        public TaskData(Func<T, Task> taskMethod, T incomeData, string name)
+        public TaskData(Action<T> taskMethod, T incomeData, string name)
         {
             TaskMethod = taskMethod ?? throw new ArgumentNullException("Task can't be null.");
 

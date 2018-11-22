@@ -86,7 +86,7 @@ namespace tobbi_pc
         /// <param name="incomeData">data to process by <taskMethod></param>
         /// <param name="taskName">Just name for task data. Can be usefull for client</param>
         /// <returns>Id of created instance of TaskData  </returns>
-        public Guid AddTask(Func<T,Task> taskMethod, T incomeData, string taskName)
+        public Guid AddTask(Action<T> taskMethod, T incomeData, string taskName)
         {
             //create task data to proces
             TaskData<T> taskData = new TaskData<T>(taskMethod, incomeData, taskName);
@@ -220,7 +220,7 @@ namespace tobbi_pc
                         {                            
                             onTaskStarting(currentTD);
                            
-                            await currentTD.TaskMethod(currentTD.IncomeData);                                                     
+                            currentTD.TaskMethod(currentTD.IncomeData);                                                     
                         }
                         catch (Exception ex)
                         {

@@ -106,7 +106,7 @@ namespace tobbi_testApp
 
                     TaskData<string> currTask = new TaskData<string>(
                          //async task delegate
-                         async incData =>
+                         incData =>
                          {
                              //simulate exception inside task
                              if (r_val == 6)
@@ -116,13 +116,9 @@ namespace tobbi_testApp
                              //right way to perform
                              else
                              {
-                                 await Task.Run(() =>
-                                 {
-                                     //do some work ...
-                                     
+                                 //do some work ...
 
-                                     Thread.Sleep(r_val * 20);
-                                 });                                 
+                                 Thread.Sleep(r_val * 20);
                              }
                          },
                          //incomeData data for task

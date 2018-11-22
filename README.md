@@ -34,7 +34,7 @@ Client task class TaskData<T> contain next properties:
         public string Name { get; set; }	
 		
 Fill all this properties and pass it to a taskProcessor.		
-	
+	TaskMethod should be async / wait.
 	
 Testing process :
 

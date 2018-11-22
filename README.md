@@ -34,7 +34,7 @@ Client task class TaskData<T> contain next properties:
         public string Name { get; set; }	
 		
 Fill all this properties and pass it to a taskProcessor.		
-	
+
 Testing process :
 
 1. Create tested consumer class. (TasksProcessor<T>)

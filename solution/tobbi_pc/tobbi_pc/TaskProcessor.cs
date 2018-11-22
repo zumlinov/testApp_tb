@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using tobbi_pc.Classes;
@@ -13,7 +10,7 @@ namespace tobbi_pc
     /// Class to parallel add , store  and execute task one by one
     /// </summary>
     /// <typeparam name="T">Type of param will be passed to task delegat</typeparam>
-    public class TaskProcessor<T>
+    public class TasksProcessor<T>
     {
         #region privet fields
         
@@ -64,7 +61,7 @@ namespace tobbi_pc
 
         #region Ctors
 
-        public TaskProcessor(int waitForCurrentTaskTimeOut = 300)
+        public TasksProcessor(int waitForCurrentTaskTimeOut = 300)
         {           
             WaitForCurrentTaskFinishingTimeOut = waitForCurrentTaskTimeOut;
 
@@ -89,7 +86,7 @@ namespace tobbi_pc
         /// <param name="incomeData">data to process by <taskMethod></param>
         /// <param name="taskName">Just name for task data. Can be usefull for client</param>
         /// <returns>Id of created instance of TaskData  </returns>
-        public Guid AddTask(Action<T> taskMethod, T incomeData, string taskName)
+        public Guid AddTask(Func<T,Task> taskMethod, T incomeData, string taskName)
         {
             //create task data to proces
             TaskData<T> taskData = new TaskData<T>(taskMethod, incomeData, taskName);
@@ -142,7 +139,7 @@ namespace tobbi_pc
 
             cancelationTS = new CancellationTokenSource();
             
-            workTask = Task.Factory.StartNew(action: workMethod);                 
+            workTask = Task.Factory.StartNew(workMethod);                 
         }
 
         /// <summary>
@@ -194,7 +191,7 @@ namespace tobbi_pc
         /// <summary>
         /// Process TaskData from queue
         /// </summary>
-        void workMethod()
+        async Task workMethod()
         {            
             //may be used to emergency task abort
             currWorkTaskThread = Thread.CurrentThread;
@@ -223,7 +220,7 @@ namespace tobbi_pc
                         {                            
                             onTaskStarting(currentTD);
                            
-                            currentTD.TaskMethod(currentTD.IncomeData);                                                     
+                            await currentTD.TaskMethod(currentTD.IncomeData);                                                     
                         }
                         catch (Exception ex)
                         {
